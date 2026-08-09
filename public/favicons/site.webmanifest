@@ -1,0 +1,16 @@
+{
+  "name": "ARVEN — A Private Alpine Reserve",
+  "short_name": "ARVEN",
+  "description": "A private reserve of 4,000 hectares above Val d'Hérens, Valais. Twenty-two residences at the treeline.",
+  "lang": "en",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0A0D0F",
+  "theme_color": "#0A0D0F",
+  "icons": [
+    { "src": "/favicons/favicon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/favicons/favicon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/favicons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
