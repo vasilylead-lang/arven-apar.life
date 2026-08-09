@@ -39,6 +39,9 @@ onMounted(async () => {
     return
   }
 
+  // dev-only handle for inspecting the scene from the console; stripped in prod
+  if (import.meta.env.DEV) window.__arven = scene.value
+
   scene.value.onHotspots((list) => {
     markers.value = list
   })

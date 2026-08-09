@@ -27,16 +27,37 @@ function smoothstep(a, b, x) {
  * Height field in model units.
  * u, v are normalised across the block; v = 0 is the far (high) edge.
  */
-// Lac Noir, in normalised (u, v) coordinates.
-const LAKE_U = 0.46
-const LAKE_V = 0.618
-const LAKE_R = 0.125 // radius in the warped distance metric below
+// Lac Noir. Sited on a bench at roughly 2,300 m rather than on the valley
+// floor: ridged noise only makes peaks, so a hollow has to be cut deliberately
+// and given a lip, the way a real cirque holds its tarn.
+const LAKE_U = 0.84
+const LAKE_V = 0.38
+const LAKE_R = 0.115 // radius in the warped distance metric below
 const LAKE_XS = 1.32 // x is stretched, so the basin comes out roughly round
+const LAKE_DEPTH = 2.1 // model units from surface to floor
+const RIM_LIFT = 2.6 // how far the surrounding lip is raised
+
+/**
+ * The tarn outline, as a radius multiplier at a given bearing. Periodic in
+ * theta so it closes cleanly. Both the rock basin and the water surface are
+ * built from this, which is what keeps them agreeing — a circular lake in an
+ * irregular bowl reads instantly as a pasted-on disc.
+ */
+export function lakeShape(theta) {
+  return (
+    1 +
+    0.2 * Math.sin(theta * 3 + 0.7) +
+    0.11 * Math.sin(theta * 5 - 1.9) +
+    0.06 * Math.sin(theta * 8 + 2.6)
+  )
+}
 
 function lakeDist(u, v) {
   const dx = (u - LAKE_U) * LAKE_XS
   const dz = v - LAKE_V
-  return Math.sqrt(dx * dx + dz * dz)
+  const d = Math.sqrt(dx * dx + dz * dz)
+  if (d < 1e-6) return 0
+  return d / lakeShape(Math.atan2(dz, dx))
 }
 
 function makeHeightFn(seed) {
@@ -65,24 +86,28 @@ function makeHeightFn(seed) {
     return Math.max(0, h)
   }
 
-  // Sample the rim before carving, so the tarn floor is guaranteed to sit
-  // below everything around it. Otherwise the water plane floats on a plateau.
-  let rimMin = Infinity
-  for (let i = 0; i < 64; i++) {
-    const a = (i / 64) * Math.PI * 2
-    const u = LAKE_U + (Math.cos(a) * LAKE_R) / LAKE_XS
-    const v = LAKE_V + Math.sin(a) * LAKE_R
-    rimMin = Math.min(rimMin, baseHeight(u, v))
-  }
-  const floor = Math.max(0.04, rimMin - 0.075)
+  // Fix the water surface just under the local ground, then hang the floor
+  // below it. Everything downstream reads these two numbers, so the lake can
+  // never end up above its own shoreline.
+  const siteH = baseHeight(LAKE_U, LAKE_V) * MAX_H
+  const level = siteH - 0.4
+  const floor = Math.max(0.6, level - LAKE_DEPTH)
 
   function height(u, v) {
-    const h = baseHeight(u, v)
-    const bowl = smoothstep(LAKE_R, LAKE_R * 0.38, lakeDist(u, v))
-    return (h * (1 - bowl) + floor * bowl) * MAX_H
+    let h = baseHeight(u, v) * MAX_H
+    const d = lakeDist(u, v)
+
+    // the lip of the cirque: a soft annulus just outside the shore. It picks up
+    // the irregular outline from lakeDist, so it never reads as a ring
+    const lip = Math.exp(-Math.pow((d - LAKE_R * 1.4) / (LAKE_R * 0.62), 2))
+    h += lip * RIM_LIFT
+
+    const bowl = smoothstep(LAKE_R, LAKE_R * 0.3, d)
+    return Math.max(0, h * (1 - bowl) + floor * bowl)
   }
 
-  height.lakeFloor = floor * MAX_H
+  height.lakeFloor = floor
+  height.lakeLevel = level
   return height
 }
 
@@ -269,12 +294,17 @@ export function buildTerrain({ seed = 7, segX = 216, segZ = 164 } = {}) {
   const mesh = new THREE.Mesh(geometry, material)
   mesh.name = 'reserve-model'
 
-  // where the water plane goes, and how wide it can be without spilling
+  // Where the water sits, plus the outline the surface mesh is built on.
+  // `boundary` returns an offset from the lake centre in world units, so the
+  // water grid can be laid out over exactly the same shape as the basin.
   const lake = {
     x: (LAKE_U - 0.5) * WIDTH,
     z: (LAKE_V - 0.5) * DEPTH,
-    level: height.lakeFloor + 0.55,
-    radius: LAKE_R * 0.62 * DEPTH,
+    level: height.lakeLevel,
+    boundary(theta, t = 1) {
+      const r = LAKE_R * lakeShape(theta) * t
+      return [((Math.cos(theta) * r) / LAKE_XS) * WIDTH, Math.sin(theta) * r * DEPTH]
+    },
   }
 
   return { mesh, geometry, material, uniforms, sampleHeight, lake }

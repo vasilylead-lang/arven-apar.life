@@ -13,7 +13,7 @@ export const SITE = {
   altitudeHigh: 3240,
   doors: 22,
   email: 'enquiries@arven-apar.life',
-  phone: '+41 27 000 00 00',
+  phone: '+41 27 420 60 05',
 }
 
 export const SECTIONS = [
@@ -49,8 +49,8 @@ export const LOCATIONS = [
     id: 'lac-noir',
     name: 'Lac Noir',
     kind: 'The tarn',
-    altitude: 2310,
-    anchor: [-4, 9],
+    altitude: 2304,
+    anchor: [34, -9],
     note: 'Ice-free for eleven weeks a year. Fed entirely by snowmelt, so it runs clear to the bottom by August.',
   },
   {

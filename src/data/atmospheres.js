@@ -23,6 +23,7 @@ export const ATMOSPHERES = [
     treeline: 2060,
     glow: 1.0,
     palette: { rock: '#8a7e6e', forest: '#31463b', snow: '#f2ece2' },
+    water: { deep: '#070d12', shallow: '#2a3540' },
     birds: { color: '#0b0e10', opacity: 0.85, speed: 1 },
   },
   {
@@ -44,6 +45,7 @@ export const ATMOSPHERES = [
     treeline: 2060,
     glow: 0.45,
     palette: { rock: '#8d8377', forest: '#2c4034', snow: '#fbfaf6' },
+    water: { deep: '#0c1a24', shallow: '#41565f' },
     birds: { color: '#141a1e', opacity: 0.7, speed: 1.9 },
   },
   {
@@ -65,6 +67,7 @@ export const ATMOSPHERES = [
     treeline: 2060,
     glow: 0.12,
     palette: { rock: '#9aa0a3', forest: '#4a5751', snow: '#ffffff' },
+    water: { deep: '#6f7c84', shallow: '#aeb8bd' },
     birds: { color: '#5a656c', opacity: 0.35, speed: 0.55 },
   },
   {
@@ -86,6 +89,7 @@ export const ATMOSPHERES = [
     treeline: 2060,
     glow: 0.55,
     palette: { rock: '#474f5a', forest: '#18262a', snow: '#b9c7d6' },
+    water: { deep: '#03060c', shallow: '#111d2b' },
     birds: { color: '#05070a', opacity: 0.9, speed: 0.75 },
   },
 ]

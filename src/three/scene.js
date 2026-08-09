@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import gsap from 'gsap'
 import { buildTerrain, altToY, WIDTH, DEPTH } from './terrain.js'
 import { buildSky } from './sky.js'
+import { buildWater } from './water.js'
 import { buildBirds } from './birds.js'
 import { ATMOSPHERES } from '../data/atmospheres.js'
 import { LOCATIONS } from '../data/site.js'
@@ -48,19 +49,10 @@ export function createScene({ canvas, reducedMotion = false }) {
   terrain.mesh.receiveShadow = !reducedMotion
   scene.add(terrain.mesh)
 
-  // Lac Noir. Position, level and radius all come from the carved basin, so
-  // the water can never end up sitting proud of the rock.
-  const water = new THREE.Mesh(
-    new THREE.CircleGeometry(terrain.lake.radius, 56),
-    new THREE.MeshStandardMaterial({
-      color: '#33485c',
-      roughness: 0.34,
-      metalness: 0.08,
-    }),
-  )
-  water.rotation.x = -Math.PI / 2
-  water.position.set(terrain.lake.x, terrain.lake.level, terrain.lake.z)
-  scene.add(water)
+  // Lac Noir, built on the same outline as the basin and shaded by the water
+  // depth under each vertex.
+  const water = buildWater({ lake: terrain.lake, sampleHeight: terrain.sampleHeight })
+  scene.add(water.mesh)
 
   const birds = buildBirds({ count: reducedMotion ? 36 : 96 })
   scene.add(birds.mesh)
@@ -107,6 +99,9 @@ export function createScene({ canvas, reducedMotion = false }) {
       Math.cos(el) * Math.cos(az) * r,
     )
     sky.uniforms.uSunDir.value.copy(sun.position).normalize()
+    water.uniforms.uSunDir.value.copy(sky.uniforms.uSunDir.value)
+    // no glitter on the water once the sun is under the horizon
+    water.uniforms.uSunUp.value = Math.max(0, Math.min(1, sky.uniforms.uSunDir.value.y * 6))
   }
   placeSun()
 
@@ -136,6 +131,12 @@ export function createScene({ canvas, reducedMotion = false }) {
     tw(birds.uniforms.uFogColor.value, colorTo(a.fog.color))
     tw(terrain.uniforms.uSnowline, { value: altToY(a.snowline) })
     tw(terrain.uniforms.uTreeline, { value: altToY(a.treeline) })
+    tw(water.uniforms.uDeep.value, colorTo(a.water.deep))
+    tw(water.uniforms.uShallow.value, colorTo(a.water.shallow))
+    tw(water.uniforms.uSheen.value, colorTo(a.sun.color))
+    tw(water.uniforms.uSky.value, colorTo(a.sky.horizon))
+    tw(water.uniforms.uFogColor.value, colorTo(a.fog.color))
+    tw(water.uniforms.uFogDensity, { value: a.fog.density })
     tw(birds.uniforms.uOpacity, { value: a.birds.opacity })
     tw(birds.uniforms.uFogDensity, { value: a.fog.density })
     tw(sky.uniforms.uGlowStrength, { value: a.glow ?? 1 })
@@ -193,9 +194,9 @@ export function createScene({ canvas, reducedMotion = false }) {
     const survey = POSES[1]
     focus.tgt.set(x, y + 1.6, z)
     focus.pos.set(
-      survey.pos[0] + x * 0.5,
-      survey.pos[1] * 0.74 + y * 0.5,
-      survey.pos[2] + z * 0.5,
+      x * 0.72 + survey.pos[0] * 0.28 + 8,
+      y + 16,
+      z * 0.72 + survey.pos[2] * 0.28 + 26,
     )
     focus.active = true
     markDirty()
@@ -319,6 +320,9 @@ export function createScene({ canvas, reducedMotion = false }) {
     b3.x += parallax.x * 2
     camera.lookAt(b3)
 
+    water.uniforms.uTime.value = elapsed
+    water.uniforms.uCamera.value.copy(camera.position)
+
     renderer.render(scene, camera)
     emitHotspots(width, height)
   }
@@ -377,6 +381,19 @@ export function createScene({ canvas, reducedMotion = false }) {
     onHotspots: (cb) => {
       hotspotCb = cb
     },
+    // Lets the console park the camera anywhere for inspection. Spread behind
+    // the DEV flag so it is stripped from the production bundle entirely.
+    ...(import.meta.env.DEV
+      ? {
+          debugPose(pos, tgt) {
+            focus.active = true
+            focus.pos.set(...pos)
+            focus.tgt.set(...tgt)
+            camera.position.set(...pos)
+            markDirty()
+          },
+        }
+      : {}),
     get atmosphere() {
       return current
     },
